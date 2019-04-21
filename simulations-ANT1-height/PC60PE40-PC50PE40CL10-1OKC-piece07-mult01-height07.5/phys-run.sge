@@ -1,0 +1,55 @@
+### man qsub !
+### join stdout and stderr
+#$ -j y
+### change to currend work dir
+#$ -cwd
+### send mail to
+#$ -M martin.voegele@biophys.mpg.de
+### send no email
+#$ -m n
+### request the parallel environment with 20 physical cores == 1 nodes
+#$ -pe impi_hydra 24 
+### request 24 hours wallclock
+#$ -l h_rt=24:00:00
+### job name
+#$ -N OKCp07m01
+
+
+## MODULES ##
+
+# load the impi module (-> mandatory)
+module load impi/4.1.3
+module load gromacs/4.6.7-plumed2.1
+
+
+## SIMULATION ##
+
+# Directory
+OLDDIR=$( pwd )
+mkdir simulation
+cd simulation
+
+# Get necessary files
+cp ../buildup/system.top .
+cp ../buildup/system.gro .
+cp ../buildup/index.ndx  .
+cp ../resources/*.mdp    .
+cp ../resources/*.itp    .
+
+
+# Energy Minimization
+mpiexec -np 1 grompp -c system.gro -f martini_em.mdp -p system.top -o martini_em.tpr -maxwarn 1
+mpiexec -np 4 mdrun_mpi -v -deffnm martini_em -rdd 2.5
+
+# Equilibration
+mpiexec -np 1 grompp -c martini_em.gro -f martini_eq.mdp -p system.top -o martini_eq.tpr -n index.ndx
+mpiexec -np 4 mdrun_mpi -v -deffnm martini_eq -cpi martini_eq.cpt -cpt 5 -rdd 2
+
+# MD simulation
+mpiexec -np 1 grompp -c martini_eq.gro -f martini_md.mdp -p system.top -o martini_md.tpr -n index.ndx
+mpiexec -np 4  mdrun_mpi -v -deffnm martini_md -cpi martini_md.cpt -cpt 5 -rdd 2
+
+
+cd ..
+
+exit 0
