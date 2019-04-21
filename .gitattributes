@@ -1,0 +1,2 @@
+*.xvg filter=lfs diff=lfs merge=lfs -text
+*.prmtop filter=lfs diff=lfs merge=lfs -text
